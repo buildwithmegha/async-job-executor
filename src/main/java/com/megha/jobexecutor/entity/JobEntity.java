@@ -47,7 +47,18 @@ public class JobEntity {
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.retryCount == null) {
+            this.retryCount = 0;
+        }
+        if (this.progress == null) {
+            this.progress = 0;
+        }
+        if (this.status == null) {
+            this.status = JobStatus.QUEUED;
+        }
     }
 
 }

@@ -18,6 +18,8 @@ import java.util.UUID;
 public class JobService {
     private final JobRepository jobRepository;
     private final BlockingQueue<UUID> jobQueue;
+    private final JobTracker jobTracker;
+
 
     public JobResponse createJob(JobRequest request) {
         JobEntity job = JobEntity.builder()
@@ -60,4 +62,30 @@ public class JobService {
                 .map(this::toResponse)
                 .toList();
     }
+    public JobResponse cancelJob(UUID jobId) {
+
+        JobEntity job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+
+        // if already finished, cannot cancel
+        if (job.getStatus() == JobStatus.SUCCESS || job.getStatus() == JobStatus.FAILED) {
+            return toResponse(job);
+        }
+
+        // mark cancelled (DB)
+        job.setStatus(JobStatus.CANCELLED);
+        job.setErrorMessage("Cancelled by user");
+        job.setCompletedAt(LocalDateTime.now());
+        jobRepository.save(job);
+
+        // interrupt thread if running
+        var future = jobTracker.get(jobId);
+        if (future != null) {
+            future.cancel(true); // ✅ interrupts thread
+            jobTracker.remove(jobId);
+        }
+
+        return toResponse(job);
+    }
+
 }

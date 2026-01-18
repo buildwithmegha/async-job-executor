@@ -32,5 +32,9 @@ public class JobController {
     public List<JobResponse> listJobs() {
         return jobService.listJobs();
     }
+    @PostMapping("/{id}/cancel")
+    public JobResponse cancelJob(@PathVariable UUID id) {
+        return jobService.cancelJob(id);
+    }
 }
 

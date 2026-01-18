@@ -21,30 +21,58 @@ public class JobTask implements Callable<String> {
     @Override
     public String call() throws Exception {
 
-        // 1) Fetch job from DB
         JobEntity job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
 
-        // 2) Mark job as RUNNING
+        // If job already cancelled, don't run
+        if (job.getStatus() == JobStatus.CANCELLED) {
+            return "CANCELLED";
+        }
+
+        // RUNNING
         job.setStatus(JobStatus.RUNNING);
         job.setStartedAt(LocalDateTime.now());
         job.setProgress(10);
         jobRepository.save(job);
 
-        // 3) Simulate work (like heavy processing)
-        for (int i = 1; i <= 5; i++) {
-            Thread.sleep(1000); // 1 sec delay
-            job.setProgress(10 + i * 15); // progress updates
+        try {
+            // simulate work
+            for (int i = 1; i <= 5; i++) {
+
+                // ✅ if cancellation happens, thread gets interrupted
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException("Job interrupted");
+                }
+
+                Thread.sleep(1000);
+
+                job.setProgress(10 + i * 15);
+                jobRepository.save(job);
+
+                // ✅ force failure for testing retry
+                if ("FAIL_TEST".equalsIgnoreCase(job.getJobType()) && i == 2) {
+                    throw new RuntimeException("Simulated failure for retry demo");
+                }
+            }
+
+            // SUCCESS
+            job.setStatus(JobStatus.SUCCESS);
+            job.setProgress(100);
+            job.setResultMessage("Job completed successfully");
+            job.setCompletedAt(LocalDateTime.now());
             jobRepository.save(job);
+
+            return "SUCCESS";
+
+        } catch (InterruptedException e) {
+            // CANCELLED
+            job.setStatus(JobStatus.CANCELLED);
+            job.setErrorMessage("Job cancelled by user");
+            job.setCompletedAt(LocalDateTime.now());
+            jobRepository.save(job);
+
+            Thread.currentThread().interrupt(); // restore interrupted status
+            return "CANCELLED";
         }
-
-        // 4) Mark SUCCESS
-        job.setStatus(JobStatus.SUCCESS);
-        job.setProgress(100);
-        job.setResultMessage("Job completed successfully");
-        job.setCompletedAt(LocalDateTime.now());
-        jobRepository.save(job);
-
-        return "SUCCESS";
     }
 }
