@@ -44,4 +44,10 @@ public class JobEntity {
 
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
+
 }

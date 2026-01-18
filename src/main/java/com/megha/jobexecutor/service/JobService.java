@@ -7,6 +7,7 @@ import com.megha.jobexecutor.entity.JobStatus;
 import com.megha.jobexecutor.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.BlockingQueue;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class JobService {
     private final JobRepository jobRepository;
+    private final BlockingQueue<UUID> jobQueue;
 
     public JobResponse createJob(JobRequest request) {
         JobEntity job = JobEntity.builder()
@@ -28,6 +30,7 @@ public class JobService {
                 .build();
 
         jobRepository.save(job);
+        jobQueue.offer(job.getId());
         return toResponse(job);
     }
     private JobResponse toResponse(JobEntity job) {
