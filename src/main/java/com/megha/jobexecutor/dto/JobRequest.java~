@@ -1,0 +1,7 @@
+package com.megha.jobexecutor.dto;
+import jakarta.validation.constraints.NotBlank;
+
+public record JobRequest {
+    @NotBlank String jobType;
+    @NotBlank String payload;
+}{}
